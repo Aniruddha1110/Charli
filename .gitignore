@@ -76,4 +76,4 @@ desktop.ini
 *.log
 *.bak
 *.swp
-~$*
+~$*"electron/resources/charli-backend/" 
