@@ -1,27 +1,63 @@
 {
   "name": "charli",
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "author": "Aniruddha",
   "description": "Charli — Personal AI Desktop Copilot",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder"
+    "build": "electron-builder --win"
   },
   "build": {
     "appId": "com.aniruddha.charli",
     "productName": "Charli",
+    "copyright": "Copyright © 2026 Aniruddha",
+    "forceCodeSigning": false,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "resources/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/charli-backend",
+        "to": "charli-backend",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../assets",
+        "to": "assets",
+        "filter": ["**/*"]
+      }
+    ],
     "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
       "icon": "../assets/icons/charli.ico",
-      "target": "nsis"
+      "requestedExecutionLevel": "asInvoker"
     },
     "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
       "installerIcon": "../assets/icons/charli.ico",
       "uninstallerIcon": "../assets/icons/charli.ico",
-      "installerHeaderIcon": "../assets/icons/charli.ico"
+      "installerHeaderIcon": "../assets/icons/charli.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Charli",
+      "include": "installer.nsh"
     }
   },
   "devDependencies": {
-    "electron": "^31.0.0",
-    "electron-builder": "^24.0.0"
+    "electron": "^42.3.0",
+    "electron-builder": "^26.8.1"
   }
 }

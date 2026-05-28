@@ -1,14 +1,53 @@
-const {
-  app, BrowserWindow, ipcMain,
-  Notification, globalShortcut,
-  Tray, Menu, nativeImage
-} = require("electron");
+// ── Imports ────────────────────────────────────────────────────────────────
+
+const { app, BrowserWindow, ipcMain, Notification, globalShortcut, Tray, Menu, nativeImage } = require("electron");
+const { spawn } = require("child_process");
 const path = require("path");
 
-let mainWindow          = null;
-let tray                = null;
-let wakeWordPollInterval = null;
+// ── Backend process management ─────────────────────────────────────────────
 
+let backendProcess = null;
+
+function startBackend() {
+  if (app.isPackaged) {
+    const backendPath = path.join(
+      process.resourcesPath,
+      "charli-backend",
+      "charli-backend.exe"
+    );
+
+    console.log("Starting backend:", backendPath);
+
+    backendProcess = spawn(backendPath, [], {
+      detached: false,
+      stdio: "ignore",
+      windowsHide: true,
+    });
+
+    backendProcess.on("error", (err) => {
+      console.error("Backend failed to start:", err);
+    });
+
+    backendProcess.on("exit", (code) => {
+      console.log("Backend exited with code:", code);
+    });
+
+    console.log("Backend started, PID:", backendProcess.pid);
+  }
+}
+
+function stopBackend() {
+  if (backendProcess) {
+    backendProcess.kill();
+    backendProcess = null;
+  }
+}
+
+// ── State ──────────────────────────────────────────────────────────────────
+
+let mainWindow           = null;
+let tray                 = null;
+let wakeWordPollInterval = null;
 
 // ── Create main window ─────────────────────────────────────────────────────
 
@@ -16,16 +55,16 @@ function createWindow() {
   const iconPath = path.join(__dirname, "../assets/icons/Charli.png");
 
   mainWindow = new BrowserWindow({
-    width:     1100,
-    height:    750,
-    minWidth:  800,
+    width:    1100,
+    height:   750,
+    minWidth: 800,
     minHeight: 550,
     backgroundColor: "#0f0f0f",
     frame: false,
     icon:  iconPath,
-    show:  false,    // Don't show until ready
+    show:  false,
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload:          path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration:  false,
     },
@@ -33,17 +72,14 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, "renderer/index.html"));
 
-  // Show window when ready to avoid white flash
   mainWindow.once("ready-to-show", () => {
     mainWindow.show();
   });
 
-  // Hide to tray instead of closing
   mainWindow.on("close", (e) => {
     if (!app._forceQuit) {
       e.preventDefault();
       mainWindow.hide();
-      // Show tray notification first time
       if (!app._trayNotified) {
         app._trayNotified = true;
         tray && tray.displayBalloon({
@@ -60,7 +96,6 @@ function createWindow() {
   });
 }
 
-
 // ── System tray ────────────────────────────────────────────────────────────
 
 function createTray() {
@@ -72,7 +107,6 @@ function createTray() {
 
   updateTrayMenu();
 
-  // Single click → show/hide window
   tray.on("click", () => {
     if (mainWindow && mainWindow.isVisible()) {
       mainWindow.hide();
@@ -81,7 +115,6 @@ function createTray() {
     }
   });
 
-  // Double click → always show
   tray.on("double-click", () => {
     activateCharli();
   });
@@ -92,39 +125,33 @@ function updateTrayMenu(isListening = false) {
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label:   "Open Charli",
-      icon:    nativeImage
-                .createFromPath(path.join(__dirname, "../assets/icons/tray.png"))
-                .resize({ width: 16, height: 16 }),
-      click:   () => activateCharli(),
+      label: "Open Charli",
+      icon:  nativeImage
+               .createFromPath(path.join(__dirname, "../assets/icons/tray.png"))
+               .resize({ width: 16, height: 16 }),
+      click: () => activateCharli(),
     },
     { type: "separator" },
     {
-      label:   "New Chat",
-      click:   () => {
+      label: "New Chat",
+      click: () => {
         activateCharli();
-        if (mainWindow) {
-          mainWindow.webContents.send("tray-new-chat");
-        }
+        if (mainWindow) mainWindow.webContents.send("tray-new-chat");
       },
     },
     {
-      label:   isListening ? "🔴 Listening..." : "Start Listening",
-      click:   () => {
+      label: isListening ? "🔴 Listening..." : "Start Listening",
+      click: () => {
         activateCharli();
-        if (mainWindow) {
-          mainWindow.webContents.send("tray-start-voice");
-        }
+        if (mainWindow) mainWindow.webContents.send("tray-start-voice");
       },
     },
     { type: "separator" },
     {
-      label:   "Settings",
-      click:   () => {
+      label: "Settings",
+      click: () => {
         activateCharli();
-        if (mainWindow) {
-          mainWindow.webContents.send("tray-open-settings");
-        }
+        if (mainWindow) mainWindow.webContents.send("tray-open-settings");
       },
     },
     { type: "separator" },
@@ -139,7 +166,6 @@ function updateTrayMenu(isListening = false) {
 
   tray.setContextMenu(contextMenu);
 }
-
 
 // ── Activate Charli ────────────────────────────────────────────────────────
 
@@ -162,13 +188,11 @@ function activateCharli() {
   }, 200);
 }
 
-
 // ── Wake word polling ──────────────────────────────────────────────────────
 
 function startWakeWordPolling() {
   wakeWordPollInterval = setInterval(() => {
     try {
-      const { net } = require("electron");
       const request = net.request("http://127.0.0.1:8000/wake/triggered");
 
       request.on("response", (response) => {
@@ -193,18 +217,59 @@ function startWakeWordPolling() {
   }, 1000);
 }
 
+// ── Wait for backend ───────────────────────────────────────────────────────
+
+async function waitForBackend(maxRetries = 30) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      await new Promise((resolve, reject) => {
+        const req = net.request("http://127.0.0.1:8000/");
+        req.on("response", (res) => {
+          if (res.statusCode === 200) resolve();
+          else reject();
+        });
+        req.on("error", reject);
+        req.end();
+      });
+      console.log("Backend is ready.");
+      return true;
+    } catch {
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
+  console.error("Backend did not start in time.");
+  return false;
+}
+
+// ── Startup setting ────────────────────────────────────────────────────────
+
+function applyStartupSetting(enabled) {
+  app.setLoginItemSettings({
+    openAtLogin: enabled,
+    name:        "Charli",
+    args:        ["--hidden"],
+  });
+}
 
 // ── App lifecycle ──────────────────────────────────────────────────────────
 
-app.whenReady().then(() => {
+const { net } = require("electron");
+
+app.whenReady().then(async () => {
+  startBackend();
+
   if (process.platform === "win32") {
     app.setAppUserModelId("com.aniruddha.charli");
+  }
+
+  if (app.isPackaged) {
+    console.log("Waiting for backend to start...");
+    await waitForBackend();
   }
 
   createWindow();
   createTray();
 
-  // Global hotkey — Ctrl+Space opens Charli from anywhere
   const registered = globalShortcut.register("CommandOrControl+Space", () => {
     activateCharli();
   });
@@ -212,41 +277,29 @@ app.whenReady().then(() => {
   if (registered) {
     console.log("Global hotkey Ctrl+Space registered.");
   } else {
-    console.warn("Global hotkey registration failed — may be in use by another app.");
+    console.warn("Global hotkey registration failed.");
   }
 
   startWakeWordPolling();
 });
 
 app.on("before-quit", () => {
+  stopBackend();
   app._forceQuit = true;
   globalShortcut.unregisterAll();
   if (wakeWordPollInterval) clearInterval(wakeWordPollInterval);
   if (tray) { tray.destroy(); tray = null; }
 });
 
-// Prevent app from quitting when all windows closed
 app.on("window-all-closed", () => {
-  // Keep running in tray — do NOT call app.quit()
+  // Keep running in tray
 });
 
 app.on("activate", () => {
   if (!mainWindow || mainWindow.isDestroyed()) createWindow();
 });
 
-
-// ── Startup setting — launch on Windows boot ───────────────────────────────
-
-function applyStartupSetting(enabled) {
-  app.setLoginItemSettings({
-    openAtLogin: enabled,
-    name:        "Charli",
-    args:        ["--hidden"],   // Start minimised to tray
-  });
-}
-
-
-// ── IPC handlers ──────────────────────────────────────────────────────────
+// ── IPC handlers ───────────────────────────────────────────────────────────
 
 ipcMain.on("window-minimize", () => mainWindow?.minimize());
 ipcMain.on("window-maximize", () => {
@@ -267,8 +320,7 @@ ipcMain.on("set-startup", (_, enabled) => {
 });
 
 ipcMain.on("wake-word-start", (_, threshold) => {
-  const { net } = require("electron");
-  const req     = net.request({ method: "POST", url: "http://127.0.0.1:8000/wake/" });
+  const req = net.request({ method: "POST", url: "http://127.0.0.1:8000/wake/" });
   req.setHeader("Content-Type", "application/json");
   req.on("response", () => {});
   req.on("error",    () => {});
@@ -277,8 +329,7 @@ ipcMain.on("wake-word-start", (_, threshold) => {
 });
 
 ipcMain.on("wake-word-stop", () => {
-  const { net } = require("electron");
-  const req     = net.request({ method: "POST", url: "http://127.0.0.1:8000/wake/" });
+  const req = net.request({ method: "POST", url: "http://127.0.0.1:8000/wake/" });
   req.setHeader("Content-Type", "application/json");
   req.on("response", () => {});
   req.on("error",    () => {});

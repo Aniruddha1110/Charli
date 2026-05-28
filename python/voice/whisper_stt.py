@@ -1,33 +1,37 @@
-# whisper_stt.py — Mic → Text with automatic language detection
-# Whisper auto-detects Hindi, Bengali, Odia, French, English etc.
+# whisper_stt.py — Mic → Text using faster-whisper (CTranslate2, no PyTorch)
+# Packages cleanly with PyInstaller — no torch DLL issues.
 
-import whisper
 import sounddevice as sd
 import numpy as np
 import tempfile
 import os
 import scipy.io.wavfile as wav
+from faster_whisper import WhisperModel
 from config import WHISPER_MODEL
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# Supported languages — Whisper language codes
 SUPPORTED_LANGUAGES = {
-    "english":  "en",
-    "hindi":    "hi",
-    "bengali":  "bn",
-    "odia":     "or",
-    "french":   "fr",
+    "english": "en",
+    "hindi":   "hi",
+    "bengali": "bn",
+    "odia":    "or",
+    "french":  "fr",
 }
 
 
 class WhisperSTT:
     def __init__(self, model_name: str = WHISPER_MODEL):
-        logger.info(f"Loading Whisper model: {model_name}...")
-        self.model       = whisper.load_model(model_name)
+        logger.info(f"Loading faster-whisper model: {model_name}...")
+        # Use int8 quantization — smaller, faster, no GPU needed
+        self.model = WhisperModel(
+            model_name,
+            device="cpu",
+            compute_type="int8",
+        )
         self.sample_rate = 16000
-        logger.info("Whisper ready — multilingual mode enabled.")
+        logger.info("Whisper ready (faster-whisper, CPU int8).")
 
     def listen(
         self,
@@ -35,15 +39,9 @@ class WhisperSTT:
         silence_duration:  float = 2.0,
         max_duration:      float = 30.0,
         min_duration:      float = 1.0,
-        language:          str   = None,   # None = auto-detect
+        language:          str   = None,
     ) -> dict:
-        """
-        Record from mic until silence, then transcribe.
-        Auto-detects language unless specified.
-
-        Returns:
-            Dict with 'text', 'language', 'language_code'
-        """
+        """Record from mic until silence, then transcribe."""
         logger.info("Listening... (multilingual, auto-detect)")
 
         chunk_size           = int(self.sample_rate * 0.1)
@@ -77,7 +75,7 @@ class WhisperSTT:
                     if speaking_started and total_chunks > min_chunks:
                         silent_count += 1
                         if silent_count >= silent_chunks_needed:
-                            logger.info("Silence detected — stopping.")
+                            logger.info("Silence — stopping.")
                             break
 
         if not recorded:
@@ -87,7 +85,7 @@ class WhisperSTT:
         return self._transcribe(audio, language)
 
     def _transcribe(self, audio: np.ndarray, language: str = None) -> dict:
-        """Transcribe audio, auto-detecting language if not specified."""
+        """Transcribe audio array."""
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
             tmp_path = tmp.name
 
@@ -95,20 +93,19 @@ class WhisperSTT:
             audio_int16 = (audio * 32767).astype(np.int16)
             wav.write(tmp_path, self.sample_rate, audio_int16)
 
-            logger.debug("Transcribing (auto-detect language)...")
-
-            # Transcribe with language detection
-            result = self.model.transcribe(
+            segments, info = self.model.transcribe(
                 tmp_path,
-                language=language,   # None = auto-detect
-                fp16=False,
-                task="transcribe",   # keep original language
+                language=language,
+                beam_size=5,
+                vad_filter=True,         # Built-in silence filtering
+                vad_parameters=dict(
+                    min_silence_duration_ms=500
+                ),
             )
 
-            text          = result["text"].strip()
-            detected_lang = result.get("language", "en")
+            text          = " ".join([s.text for s in segments]).strip()
+            detected_lang = info.language
 
-            # Map Whisper code to friendly name
             lang_names = {v: k for k, v in SUPPORTED_LANGUAGES.items()}
             lang_name  = lang_names.get(detected_lang, detected_lang)
 
@@ -130,15 +127,15 @@ class WhisperSTT:
     def transcribe_file(self, file_path: str, language: str = None) -> dict:
         """Transcribe an audio file directly."""
         try:
-            result = self.model.transcribe(
+            segments, info = self.model.transcribe(
                 file_path,
                 language=language,
-                fp16=False,
+                beam_size=5,
             )
             return {
-                "text":          result["text"].strip(),
-                "language":      result.get("language", "en"),
-                "language_code": result.get("language", "en"),
+                "text":          " ".join([s.text for s in segments]).strip(),
+                "language":      info.language,
+                "language_code": info.language,
             }
         except Exception as e:
             logger.error(f"File transcription failed: {e}")
