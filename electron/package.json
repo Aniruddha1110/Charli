@@ -1,0 +1,27 @@
+{
+  "name": "charli",
+  "version": "0.1.0",
+  "description": "Charli — Personal AI Desktop Copilot",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "build": {
+    "appId": "com.aniruddha.charli",
+    "productName": "Charli",
+    "win": {
+      "icon": "../assets/icons/charli.ico",
+      "target": "nsis"
+    },
+    "nsis": {
+      "installerIcon": "../assets/icons/charli.ico",
+      "uninstallerIcon": "../assets/icons/charli.ico",
+      "installerHeaderIcon": "../assets/icons/charli.ico"
+    }
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.0.0"
+  }
+}

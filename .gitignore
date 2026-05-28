@@ -1,0 +1,77 @@
+# ── Python ────────────────────────────────────────────────────────────────
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ── Environment ───────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+config.local.py
+
+# ── Data & Database ───────────────────────────────────────────────────────
+data/charli.db
+data/logs/
+data/memory/
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Node / Electron ───────────────────────────────────────────────────────
+electron/node_modules/
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+electron/dist/
+electron/out/
+
+# ── AI Models (too large for git) ─────────────────────────────────────────
+*.onnx
+*.bin
+*.pt
+*.pth
+*.gguf
+*.ggml
+models/
+openwakeword/
+whisper_models/
+
+# ── User data ─────────────────────────────────────────────────────────────
+assets/icons/charli.ico
+data/
+
+# ── OS files ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+*.lnk
+
+# ── IDE ───────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ── Temp ──────────────────────────────────────────────────────────────────
+*.tmp
+*.temp
+*.log
+*.bak
+*.swp
+~$*

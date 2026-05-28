@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <!-- FIX 1: Added https://cdnjs.cloudflare.com to style-src so flag-icon-css loads correctly -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self';
+                 connect-src http://127.0.0.1:8000;
+                 script-src 'self' 'unsafe-inline' https://unpkg.com;
+                 style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com;
+                 img-src 'self' data:;
+                 font-src 'self' https://cdnjs.cloudflare.com"/>
+  <title>Charli</title>
+  <link rel="stylesheet" href="styles/main.css"/>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ── Title bar ──────────────────────────────────────────────────── -->
+  <div class="titlebar">
+    <div class="titlebar-left">
+      <img src="../assets/icons/Charli.png"
+          class="app-logo-img"
+          alt="Charli"/>
+      <span class="app-title">Charli</span>
+    </div>
+    <div class="titlebar-center">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">Connecting…</span>
+    </div>
+    <div class="titlebar-right">
+      <button id="btn-minimize" class="win-btn" title="Minimise">
+        <i data-lucide="minus" width="14" height="14"></i>
+      </button>
+      <button id="btn-maximize" class="win-btn" title="Maximise">
+        <i data-lucide="square" width="14" height="14"></i>
+      </button>
+      <button id="btn-close" class="win-btn close" title="Close">
+        <i data-lucide="x" width="14" height="14"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Main layout ────────────────────────────────────────────────── -->
+  <div class="main">
+
+    <!-- ── Sidebar ──────────────────────────────────────────────────── -->
+    <aside class="sidebar">
+      <span class="sidebar-section">Workspace</span>
+      <button class="nav-btn active" onclick="showPanel('chat', this)">
+        <i data-lucide="message-circle" class="nav-icon"></i> Chat
+      </button>
+      <button class="nav-btn" onclick="showPanel('tasks', this)">
+        <i data-lucide="check-square" class="nav-icon"></i> Tasks
+      </button>
+      <button class="nav-btn" onclick="showPanel('notes', this)">
+        <i data-lucide="file-text" class="nav-icon"></i> Notes
+      </button>
+      <button class="nav-btn" onclick="showPanel('calendar', this)">
+        <i data-lucide="calendar" class="nav-icon"></i> Calendar
+      </button>
+      <button class="nav-btn" onclick="showPanel('reminders', this)">
+        <i data-lucide="bell" class="nav-icon"></i> Reminders
+      </button>
+
+      <span class="sidebar-section">Tools</span>
+      <button class="nav-btn" onclick="showPanel('files', this)">
+        <i data-lucide="folder" class="nav-icon"></i> Files
+      </button>
+      <button class="nav-btn" onclick="showPanel('search', this)">
+        <i data-lucide="search" class="nav-icon"></i> Search
+      </button>
+      <button class="nav-btn" onclick="showPanel('code', this)">
+        <i data-lucide="code-2" class="nav-icon"></i> Code
+      </button>
+      <button class="nav-btn" onclick="showPanel('automation', this)">
+        <i data-lucide="cpu" class="nav-icon"></i> Automation
+      </button>
+      <button class="nav-btn" onclick="showPanel('translator', this)">
+        <i data-lucide="languages" class="nav-icon"></i> Translator
+      </button>
+
+      <!-- ── Chat History ──────────────────────────────────────── -->
+      <div class="chat-history-section">
+        <div class="chat-history-header">
+          <span class="sidebar-section" style="margin:0; padding:0;">Chats</span>
+          <button class="new-chat-btn" onclick="startNewChat()" title="New Chat">
+            <i data-lucide="plus" width="13" height="13"></i> New
+          </button>
+        </div>
+        <div id="chat-history-list" class="chat-history-list"></div>
+      </div>
+
+      <div class="sidebar-footer">
+        <button class="nav-btn" onclick="showPanel('settings', this)">
+          <i data-lucide="settings" class="nav-icon"></i> Settings
+        </button>
+        <div class="model-badge">
+          <i data-lucide="cpu" width="10" height="10"></i>
+          <span id="model-label">—</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ── Panels ─────────────────────────────────────────────────────── -->
+    <div class="panel-container">
+
+      <!-- Chat panel -->
+      <section class="chat-area" id="panel-chat">
+        <div class="chat-header">
+          <span class="chat-title">Chat</span>
+          <div class="header-actions">
+            <button class="icon-btn" id="clear-btn">
+              <i data-lucide="trash-2" width="13" height="13"></i> Clear
+            </button>
+          </div>
+        </div>
+        <div id="messages"></div>
+        <div class="input-bar">
+          <div class="input-row">
+            <button id="voice-btn" title="Click to speak">
+              <i data-lucide="mic" width="16" height="16"></i>
+            </button>
+            <textarea id="user-input" rows="1"
+              placeholder="Ask Charli anything… (Enter to send, Shift+Enter for newline)"
+            ></textarea>
+            <button id="send-btn" title="Send">
+              <i data-lucide="send" width="16" height="16"></i>
+            </button>
+          </div>
+          <p class="input-hint">Charli runs 100% locally — no data leaves your machine.</p>
+        </div>
+      </section>
+
+      <!-- Tasks panel -->
+      <section class="chat-area hidden" id="panel-tasks">
+        <div class="chat-header">
+          <span class="chat-title">Tasks</span>
+          <div class="header-actions">
+            <button class="icon-btn filter-btn active" onclick="setFilter('all', this)">All</button>
+            <button class="icon-btn filter-btn" onclick="setFilter('pending', this)">Pending</button>
+            <button class="icon-btn filter-btn" onclick="setFilter('done', this)">Done</button>
+          </div>
+        </div>
+        <div id="tasks-list" class="item-list"></div>
+        <div class="input-bar">
+          <div class="input-row">
+            <input id="task-input" type="text"
+              placeholder="New task… (Enter to add)"
+              onkeydown="if(event.key==='Enter') addTask()"
+              style="flex:1; background:transparent; border:none; outline:none;
+                     color:var(--text-primary); font-size:14px; font-family:var(--font)"/>
+            <select id="task-priority"
+              style="background:#1a1a1a; border:1px solid #2a2a2a; color:var(--text-secondary);
+                     border-radius:6px; padding:4px 8px; font-size:12px; cursor:pointer">
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+              <option value="low">Low</option>
+            </select>
+            <button class="icon-btn" onclick="addTask()"
+              style="background:var(--accent); color:white; border:none; display:flex;
+                     align-items:center; gap:6px;">
+              <i data-lucide="plus" width="13" height="13"></i> Add
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Notes panel -->
+      <section class="chat-area hidden" id="panel-notes">
+        <div class="chat-header">
+          <span class="chat-title">Notes</span>
+        </div>
+        <div id="notes-list" class="item-list"></div>
+        <div class="input-bar">
+          <div style="display:flex; gap:8px; margin-bottom:8px">
+            <input id="note-title" type="text" placeholder="Title (optional)"
+              style="flex:1; background:#1a1a1a; border:1px solid #2a2a2a; border-radius:8px;
+                     color:var(--text-primary); padding:8px 12px; font-size:13px; outline:none"/>
+            <input id="note-tags" type="text" placeholder="Tags: work, ideas"
+              style="flex:1; background:#1a1a1a; border:1px solid #2a2a2a; border-radius:8px;
+                     color:var(--text-primary); padding:8px 12px; font-size:13px; outline:none"/>
+          </div>
+          <div class="input-row">
+            <textarea id="note-input" rows="1" placeholder="Write a note…"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();addNote()}"
+            ></textarea>
+            <button onclick="addNote()"
+              style="background:var(--accent); color:white; border:none; padding:8px 14px;
+                     border-radius:8px; cursor:pointer; font-size:13px; display:flex;
+                     align-items:center; gap:6px;">
+              <i data-lucide="save" width="13" height="13"></i> Save
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Files panel -->
+      <section class="chat-area hidden" id="panel-files">
+        <div class="chat-header">
+          <span class="chat-title">Files</span>
+          <div class="header-actions">
+            <span id="file-current-path"
+              style="font-size:11px; color:var(--text-muted); max-width:500px;
+                     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+              Select a folder to browse
+            </span>
+          </div>
+        </div>
+        <div id="quick-folders"
+          style="display:flex; gap:8px; padding:12px 16px; flex-wrap:wrap;
+                 border-bottom:1px solid #1a1a1a; flex-shrink:0;">
+        </div>
+        <div id="file-list" class="item-list"></div>
+        <div class="input-bar">
+          <div class="input-row">
+            <i data-lucide="search" width="16" height="16"
+               style="color:var(--text-muted); flex-shrink:0;"></i>
+            <input id="file-search-input" type="text"
+              placeholder="Search files across Desktop, Documents, Downloads…"
+              onkeydown="if(event.key==='Enter') searchFiles()"
+              style="flex:1; background:transparent; border:none; outline:none;
+                     color:var(--text-primary); font-size:14px; font-family:var(--font)"/>
+            <button class="icon-btn" onclick="searchFiles()"
+              style="background:var(--accent); color:white; border:none; display:flex;
+                     align-items:center; gap:6px;">
+              <i data-lucide="search" width="13" height="13"></i> Search
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Search panel -->
+      <section class="chat-area hidden" id="panel-search">
+        <div class="chat-header">
+          <span class="chat-title">Search</span>
+          <div class="header-actions">
+            <button class="icon-btn search-mode-btn active"
+              onclick="setSearchMode('web', this)">
+              <i data-lucide="globe" width="13" height="13"></i> Web
+            </button>
+            <button class="icon-btn search-mode-btn"
+              onclick="setSearchMode('news', this)">
+              <i data-lucide="newspaper" width="13" height="13"></i> News
+            </button>
+          </div>
+        </div>
+
+        <!-- Summary box -->
+        <div id="search-summary" style="padding: 0 16px; flex-shrink:0;"></div>
+
+        <!-- Results -->
+        <div id="search-results" class="item-list"></div>
+
+        <!-- Search input -->
+        <div class="input-bar">
+          <div class="input-row">
+            <i data-lucide="search" width="16" height="16"
+              style="color:var(--text-muted); flex-shrink:0;"></i>
+            <input id="search-input" type="text"
+              placeholder="Search the web… (Enter to search)"
+              onkeydown="if(event.key==='Enter') runSearch()"
+              style="flex:1; background:transparent; border:none; outline:none;
+                    color:var(--text-primary); font-size:14px; font-family:var(--font)"/>
+            <button class="icon-btn" onclick="runSearch()"
+              style="background:var(--accent); color:white; border:none;
+                    display:flex; align-items:center; gap:6px;">
+              <i data-lucide="search" width="13" height="13"></i> Search
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Calendar panel -->
+      <section class="chat-area hidden" id="panel-calendar">
+        <div class="chat-header">
+          <span class="chat-title">Calendar</span>
+          <div class="header-actions">
+            <button class="icon-btn" onclick="prevMonth()">
+              <i data-lucide="chevron-left" width="14" height="14"></i>
+            </button>
+            <span id="cal-month-label"
+              style="font-size:13px; font-weight:600; color:var(--text-primary);
+                    min-width:140px; text-align:center;">
+            </span>
+            <button class="icon-btn" onclick="nextMonth()">
+              <i data-lucide="chevron-right" width="14" height="14"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="cal-layout">
+
+          <!-- Left: Calendar grid -->
+          <div class="cal-main">
+            <div id="cal-grid" class="cal-grid"></div>
+          </div>
+
+          <!-- Right: Day panel + Upcoming -->
+          <div class="cal-sidebar">
+
+            <!-- Day events panel -->
+            <div id="cal-day-panel" class="cal-day-panel hidden">
+              <div id="cal-day-title" class="cal-day-title"></div>
+              <div id="cal-day-events"></div>
+            </div>
+
+            <!-- Upcoming events -->
+            <div id="cal-upcoming"></div>
+
+            <!-- Add event form -->
+            <div class="cal-add-form">
+              <div class="cal-add-title">Add Event</div>
+              <input id="cal-event-title" type="text" placeholder="Event title *"
+                class="cal-input"
+                onkeydown="if(event.key==='Enter') addCalEvent()"/>
+              <div style="display:flex; gap:8px;">
+                <input id="cal-event-time" type="time" class="cal-input"
+                  style="flex:1" placeholder="Start time"/>
+                <input id="cal-event-end" type="time" class="cal-input"
+                  style="flex:1" placeholder="End time"/>
+              </div>
+              <input id="cal-event-location" type="text" placeholder="Location (optional)"
+                class="cal-input"/>
+              <input id="cal-event-desc" type="text" placeholder="Description (optional)"
+                class="cal-input"/>
+              <button class="cal-add-btn" onclick="addCalEvent()">
+                <i data-lucide="plus" width="14" height="14"></i>
+                Add Event
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- Reminders panel -->
+      <section class="chat-area hidden" id="panel-reminders">
+        <div class="chat-header">
+          <span class="chat-title">Reminders</span>
+          <div class="header-actions">
+            <span id="reminder-status" class="hidden"
+              style="font-size:12px; transition:color 0.2s;"></span>
+            <button class="icon-btn" onclick="loadReminders()">
+              <i data-lucide="refresh-cw" width="13" height="13"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Reminders list -->
+        <div id="reminders-list" class="item-list"></div>
+
+        <!-- Add reminder -->
+        <div class="input-bar">
+
+          <!-- Natural language input -->
+          <div style="margin-bottom:10px;">
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px;
+                        text-transform:uppercase; letter-spacing:0.5px;">
+              Natural Language
+            </div>
+            <div class="input-row">
+              <i data-lucide="sparkles" width="16" height="16"
+                style="color:var(--accent); flex-shrink:0;"></i>
+              <input id="reminder-natural-input" type="text"
+                placeholder="e.g. remind me to call mom at 6pm"
+                onkeydown="if(event.key==='Enter') addReminderNatural()"
+                style="flex:1; background:transparent; border:none; outline:none;
+                      color:var(--text-primary); font-size:14px; font-family:var(--font)"/>
+              <button id="reminder-natural-btn" class="icon-btn"
+                onclick="addReminderNatural()"
+                style="background:var(--accent); color:white; border:none;
+                      display:flex; align-items:center; gap:5px;">
+                <i data-lucide="plus" width="13" height="13"></i> Set
+              </button>
+            </div>
+          </div>
+
+          <!-- Manual input -->
+          <div>
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px;
+                        text-transform:uppercase; letter-spacing:0.5px;">
+              Manual
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <input id="reminder-title-input" type="text"
+                placeholder="Reminder title"
+                style="flex:2; min-width:140px; background:var(--bg-input);
+                      border:1px solid #2a2a2a; border-radius:8px;
+                      color:var(--text-primary); padding:8px 12px;
+                      font-size:13px; outline:none;"/>
+              <input id="reminder-date-input" type="date"
+                style="flex:1; min-width:120px; background:var(--bg-input);
+                      border:1px solid #2a2a2a; border-radius:8px;
+                      color:var(--text-primary); padding:8px 12px;
+                      font-size:13px; outline:none; cursor:pointer;"/>
+              <input id="reminder-time-input" type="time"
+                style="flex:1; min-width:100px; background:var(--bg-input);
+                      border:1px solid #2a2a2a; border-radius:8px;
+                      color:var(--text-primary); padding:8px 12px;
+                      font-size:13px; outline:none; cursor:pointer;"/>
+              <button class="icon-btn" onclick="addReminderManual()"
+                style="background:var(--accent); color:white; border:none;
+                      display:flex; align-items:center; gap:5px; white-space:nowrap;">
+                <i data-lucide="bell-plus" width="13" height="13"></i> Add
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Code panel -->
+      <section class="chat-area hidden" id="panel-code">
+        <div class="chat-header">
+          <span class="chat-title">Code</span>
+          <div class="header-actions">
+            <span id="code-status" class="hidden"
+              style="font-size:12px; transition:color 0.2s;"></span>
+            <div id="code-spinner" class="hidden"
+              style="display:flex; align-items:center; gap:4px; font-size:11px; color:var(--text-muted);">
+              <i data-lucide="loader" width="13" height="13"
+                style="animation:spin 1s linear infinite;"></i>
+              Processing...
+            </div>
+            <select id="code-language-select"
+              onchange="setCodeLanguage(this.value)"
+              style="background:var(--bg-input); border:1px solid #2a2a2a;
+                    color:var(--text-primary); border-radius:6px;
+                    padding:4px 8px; font-size:12px; cursor:pointer; outline:none;">
+            </select>
+            <button class="icon-btn" onclick="copyAllOutput()" title="Copy output">
+              <i data-lucide="copy" width="13" height="13"></i>
+            </button>
+            <button class="icon-btn" onclick="clearCodePanel()" title="Clear">
+              <i data-lucide="trash-2" width="13" height="13"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="code-layout">
+
+          <div class="code-left">
+            <div class="code-actions">
+              <button class="code-action-btn write"    onclick="runCodeAction('write')">
+                <i data-lucide="wand-2" width="14" height="14"></i> Write
+              </button>
+              <button class="code-action-btn debug"    onclick="runCodeAction('debug')">
+                <i data-lucide="bug" width="14" height="14"></i> Debug
+              </button>
+              <button class="code-action-btn explain"  onclick="runCodeAction('explain')">
+                <i data-lucide="book-open" width="14" height="14"></i> Explain
+              </button>
+              <button class="code-action-btn review"   onclick="runCodeAction('review')">
+                <i data-lucide="search-code" width="14" height="14"></i> Review
+              </button>
+              <button class="code-action-btn optimize" onclick="runCodeAction('optimize')">
+                <i data-lucide="zap" width="14" height="14"></i> Optimize
+              </button>
+              <button class="code-action-btn complete" onclick="runCodeAction('complete')">
+                <i data-lucide="sparkles" width="14" height="14"></i> Complete
+              </button>
+              <button class="code-action-btn test"     onclick="runCodeAction('test')">
+                <i data-lucide="test-tube" width="14" height="14"></i> Tests
+              </button>
+              <button class="code-action-btn convert"  onclick="runCodeAction('convert')">
+                <i data-lucide="arrow-right-left" width="14" height="14"></i> Convert
+              </button>
+            </div>
+
+            <input id="code-prompt" type="text"
+              placeholder="Describe what you want (required for Write, optional for others)…"
+              style="width:100%; background:var(--bg-input); border:1px solid #2a2a2a;
+                    border-radius:8px; color:var(--text-primary); padding:9px 12px;
+                    font-size:13px; font-family:var(--font); outline:none;
+                    transition:border-color 0.15s; margin-bottom:8px;"
+              onfocus="this.style.borderColor='var(--accent)'"
+              onblur="this.style.borderColor='#2a2a2a'"/>
+
+            <div class="code-editor-wrap">
+              <textarea id="code-input" class="code-editor" spellcheck="false"
+                placeholder="Write or paste your code here…"></textarea>
+            </div>
+          </div>
+
+          <div class="code-right">
+            <div class="code-output-header">
+              <span style="font-size:11px; text-transform:uppercase;
+                          letter-spacing:0.8px; color:var(--text-muted); font-weight:600;">Output</span>
+            </div>
+            <div id="code-output" class="code-output">
+              <div class="code-output-placeholder">
+                <i data-lucide="code-2" width="32" height="32"></i>
+                <p>Select an action above to get started</p>
+                <p style="font-size:11px; margin-top:4px;">
+                  Write — generate from description<br>
+                  Debug — fix bugs in your code<br>
+                  Explain — understand what code does<br>
+                  Review — get professional feedback
+                </p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Automation panel -->
+      <section class="chat-area hidden" id="panel-automation">
+        <div class="chat-header">
+          <span class="chat-title">Automation</span>
+          <div class="header-actions">
+            <span id="auto-status" class="hidden"
+              style="font-size:12px; transition:color 0.2s;"></span>
+          </div>
+        </div>
+
+        <div class="auto-scroll">
+
+          <!-- ── Open Apps ───────────────────────────────────────────── -->
+          <div class="auto-section">
+            <div class="auto-section-title">
+              <i data-lucide="app-window" width="14" height="14"></i> Open Apps
+            </div>
+            <div id="auto-apps-list" class="auto-apps-grid"></div>
+            <div class="auto-row" style="margin-top:10px;">
+              <input id="auto-app-input" type="text"
+                placeholder="App name… e.g. chrome, spotify, notepad"
+                class="auto-input"
+                onkeydown="if(event.key==='Enter') launchApp()"/>
+              <button class="auto-btn" onclick="launchApp()">
+                <i data-lucide="play" width="14" height="14"></i> Open
+              </button>
+            </div>
+          </div>
+
+          <!-- ── Type Text ───────────────────────────────────────────── -->
+          <div class="auto-section">
+            <div class="auto-section-title">
+              <i data-lucide="keyboard" width="14" height="14"></i> Type Text
+            </div>
+            <p class="auto-hint">
+              Click your target window first, then press Type — Charli will type after 1 second.
+            </p>
+            <div class="auto-row">
+              <input id="auto-type-input" type="text"
+                placeholder="Text to type into active window…"
+                class="auto-input"
+                onkeydown="if(event.key==='Enter') autoTypeText()"/>
+              <button class="auto-btn" onclick="autoTypeText()">
+                <i data-lucide="type" width="14" height="14"></i> Type
+              </button>
+            </div>
+            <div class="auto-row" style="margin-top:8px;">
+              <input id="auto-key-input" type="text"
+                placeholder="Hotkey… e.g. ctrl+c, alt+f4, enter, win"
+                class="auto-input"
+                onkeydown="if(event.key==='Enter') autoPressKey()"/>
+              <button class="auto-btn" onclick="autoPressKey()">
+                <i data-lucide="command" width="14" height="14"></i> Press
+              </button>
+            </div>
+          </div>
+
+          <!-- ── Screenshot ──────────────────────────────────────────── -->
+          <div class="auto-section">
+            <div class="auto-section-title">
+              <i data-lucide="camera" width="14" height="14"></i> Screenshot
+            </div>
+            <div class="auto-row">
+              <button class="auto-btn" onclick="captureScreen()">
+                <i data-lucide="monitor" width="14" height="14"></i> Capture Screen
+              </button>
+              <button class="auto-btn" onclick="saveScreen()">
+                <i data-lucide="save" width="14" height="14"></i> Save to Desktop
+              </button>
+            </div>
+            <div id="auto-screenshot-preview" class="hidden" style="margin-top:10px;">
+              <img id="auto-screenshot-img" style="max-width:100%; border-radius:8px;
+                border:1px solid #2a2a2a;" src="" alt="Screenshot"/>
+              <div class="auto-row" style="margin-top:8px;">
+                <button class="auto-btn" onclick="downloadScreenshot()">
+                  <i data-lucide="download" width="14" height="14"></i> Download
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Volume ──────────────────────────────────────────────── -->
+          <div class="auto-section">
+            <div class="auto-section-title">
+              <i data-lucide="volume-2" width="14" height="14"></i> Volume Control
+            </div>
+            <div class="auto-row">
+              <button id="auto-mute-btn" class="auto-btn" onclick="toggleMute()">
+                <i data-lucide="volume-2" width="14" height="14"></i>
+              </button>
+              <input id="auto-volume-slider" type="range"
+                min="0" max="100" step="1" value="50"
+                class="auto-slider"
+                oninput="changeVolume(this.value)"/>
+              <span id="auto-volume-label"
+                style="font-size:13px; color:var(--text-primary);
+                      min-width:40px; text-align:right;">50%</span>
+            </div>
+            <div class="auto-row" style="margin-top:8px; gap:6px; flex-wrap:wrap;">
+              <button class="auto-btn-sm" onclick="setVolumeLevel(0)">0%</button>
+              <button class="auto-btn-sm" onclick="setVolumeLevel(25)">25%</button>
+              <button class="auto-btn-sm" onclick="setVolumeLevel(50)">50%</button>
+              <button class="auto-btn-sm" onclick="setVolumeLevel(75)">75%</button>
+              <button class="auto-btn-sm" onclick="setVolumeLevel(100)">100%</button>
+            </div>
+          </div>
+
+          <!-- ── Clipboard ───────────────────────────────────────────── -->
+          <div class="auto-section">
+            <div class="auto-section-title">
+              <i data-lucide="clipboard" width="14" height="14"></i> Clipboard
+            </div>
+            <textarea id="auto-clipboard-content" rows="3"
+              placeholder="Clipboard content…"
+              style="width:100%; background:var(--bg-input); border:1px solid #2a2a2a;
+                    border-radius:8px; color:var(--text-primary); padding:10px 12px;
+                    font-size:13px; font-family:var(--font); outline:none; resize:vertical;">
+            </textarea>
+            <div class="auto-row" style="margin-top:8px;">
+              <button class="auto-btn" onclick="refreshClipboard()">
+                <i data-lucide="refresh-cw" width="14" height="14"></i> Refresh
+              </button>
+              <button class="auto-btn" onclick="copyToClipboard()">
+                <i data-lucide="copy" width="14" height="14"></i> Copy to Clipboard
+              </button>
+            </div>
+          </div>
+
+          <!-- ── Run Command ─────────────────────────────────────────── -->
+          <div class="auto-section">
+            <div class="auto-section-title">
+              <i data-lucide="terminal" width="14" height="14"></i> Run Command
+            </div>
+            <p class="auto-hint">
+              Runs in the background. Output shown below. Some dangerous commands are blocked.
+            </p>
+            <div class="auto-row">
+              <input id="auto-cmd-input" type="text"
+                placeholder="e.g. dir, ipconfig, python --version, pip list"
+                class="auto-input"
+                onkeydown="if(event.key==='Enter') executeCommand()"
+                style="font-family:var(--font-mono); font-size:13px;"/>
+              <button class="auto-btn" onclick="executeCommand()">
+                <i data-lucide="play" width="14" height="14"></i> Run
+              </button>
+            </div>
+            <pre id="auto-cmd-output" class="hidden"
+              style="background:#0a0a0a; border:1px solid #2a2a2a; border-radius:8px;
+                    padding:12px; font-size:12px; font-family:var(--font-mono);
+                    color:#e2e8f0; margin-top:10px; overflow-x:auto; max-height:200px;
+                    overflow-y:auto; white-space:pre-wrap;">
+            </pre>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Translator panel -->
+      <!-- FIX 2: Removed stray developer HTML comments from the body.
+           FIX 3: Moved hidden selects inside the panel (not floating outside .trans-layout).
+           FIX 4: Properly closed .trans-layout div before </section>. -->
+      <section class="chat-area hidden" id="panel-translator">
+        <div class="chat-header">
+          <span class="chat-title">Translator</span>
+          <div class="header-actions">
+            <span id="trans-status" class="hidden"
+              style="font-size:12px; transition:color 0.2s;"></span>
+          </div>
+        </div>
+
+        <div class="trans-layout">
+
+          <!-- Hidden native selects (JS reads their .value) -->
+          <select id="trans-source-lang" style="display:none;"></select>
+          <select id="trans-target-lang" style="display:none;"></select>
+
+          <!-- Language bar with custom flag dropdowns -->
+          <div class="trans-lang-bar">
+
+            <div class="trans-lang-select">
+              <label style="font-size:10px; color:var(--text-muted);
+                            text-transform:uppercase; letter-spacing:0.5px;">From</label>
+              <div class="cdd-wrapper" id="trans-source-custom"></div>
+            </div>
+
+            <button class="trans-swap-btn" onclick="swapLanguages()" title="Swap languages">
+              <i data-lucide="arrow-right-left" width="16" height="16"></i>
+            </button>
+
+            <div class="trans-lang-select">
+              <label style="font-size:10px; color:var(--text-muted);
+                            text-transform:uppercase; letter-spacing:0.5px;">To</label>
+              <div class="cdd-wrapper" id="trans-target-custom"></div>
+            </div>
+
+            <!-- Formality toggle -->
+            <div class="trans-formal-toggle">
+              <label class="settings-toggle" title="Formal = native script, Casual = Roman">
+                <input id="trans-formal" type="checkbox" checked/>
+                <span class="toggle-track"></span>
+              </label>
+              <span style="font-size:11px; color:var(--text-muted);">Formal</span>
+            </div>
+
+          </div>
+
+          <!-- Text areas -->
+          <div class="trans-boxes">
+
+            <!-- Input -->
+            <div class="trans-box">
+              <div class="trans-box-header">
+                <span class="trans-box-label">Original</span>
+                <div style="display:flex; gap:6px;">
+                  <button class="trans-icon-btn" onclick="detectInputLanguage()"
+                    title="Auto-detect language">
+                    <i data-lucide="scan-text" width="13" height="13"></i> Detect
+                  </button>
+                  <button id="trans-listen-btn" class="trans-icon-btn"
+                    onclick="listenForTranslation()" title="Speak to translate">
+                    <i data-lucide="mic" width="13" height="13"></i> Speak
+                  </button>
+                </div>
+              </div>
+              <textarea id="trans-input" class="trans-textarea"
+                placeholder="Type or speak text to translate…"
+                onkeydown="if(event.ctrlKey && event.key==='Enter') runTranslation()">
+              </textarea>
+            </div>
+
+            <!-- Arrow -->
+            <div class="trans-arrow">
+              <i data-lucide="arrow-right" width="20" height="20"
+                style="color:var(--text-muted);"></i>
+            </div>
+
+            <!-- Output -->
+            <div class="trans-box">
+              <div class="trans-box-header">
+                <span class="trans-box-label">Translation</span>
+                <div style="display:flex; gap:6px;">
+                  <button class="trans-icon-btn" onclick="speakOutput()"
+                    title="Speak translation">
+                    <i data-lucide="volume-2" width="13" height="13"></i> Speak
+                  </button>
+                  <button class="trans-icon-btn" onclick="copyTranslation()"
+                    title="Copy translation">
+                    <i data-lucide="copy" width="13" height="13"></i> Copy
+                  </button>
+                </div>
+              </div>
+              <textarea id="trans-output" class="trans-textarea"
+                placeholder="Translation will appear here…" readonly>
+              </textarea>
+            </div>
+
+          </div>
+
+          <!-- Action buttons -->
+          <div class="trans-actions">
+            <button id="trans-btn" class="trans-primary-btn" onclick="runTranslation()">
+              <i data-lucide="languages" width="14" height="14"></i> Translate
+            </button>
+            <button id="trans-speak-btn" class="trans-secondary-btn"
+              onclick="speakTranslation()">
+              <i data-lucide="volume-2" width="14" height="14"></i> Translate + Speak
+            </button>
+          </div>
+
+          <!-- Hint -->
+          <p style="text-align:center; font-size:11px; color:var(--text-muted);
+                    padding-bottom:12px;">
+            Ctrl+Enter to translate · Click Speak to hear the mic input auto-translated
+          </p>
+
+        </div><!-- end .trans-layout -->
+      </section>
+
+      <!-- Settings panel -->
+      <section class="chat-area hidden" id="panel-settings">
+        <div class="chat-header">
+          <span class="chat-title">Settings</span>
+          <div class="header-actions">
+            <span id="settings-saved" class="hidden"
+              style="font-size:12px; color:var(--green); display:flex;
+                    align-items:center; gap:4px;">
+              <i data-lucide="check" width="13" height="13"></i> Saved
+            </span>
+          </div>
+        </div>
+
+        <div class="settings-scroll">
+
+          <!-- ── Profile ─────────────────────────────────────────────── -->
+          <div class="settings-section">
+            <div class="settings-section-title">
+              <i data-lucide="user" width="14" height="14"></i> Profile
+            </div>
+
+            <div class="settings-profile-row">
+              <!-- Photo -->
+              <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+                <div class="settings-photo-wrap" onclick="triggerPhotoUpload()">
+                  <img id="set-photo-preview" class="settings-photo hidden" src="" alt="Photo"/>
+                  <div id="set-photo-placeholder" class="settings-photo-placeholder">
+                    <i data-lucide="user" width="28" height="28"></i>
+                  </div>
+                  <div class="settings-photo-overlay">
+                    <i data-lucide="camera" width="14" height="14"></i>
+                  </div>
+                </div>
+                <button id="set-photo-delete" class="hidden"
+                  onclick="removePhoto()"
+                  style="background:transparent; border:1px solid #3a3a3a; color:var(--red);
+                        border-radius:6px; padding:3px 10px; font-size:11px; cursor:pointer;
+                        display:flex; align-items:center; gap:4px; transition:all 0.15s;"
+                  onmouseover="this.style.background='#1f0a0a'"
+                  onmouseout="this.style.background='transparent'">
+                  <i data-lucide="trash-2" width="11" height="11"></i> Remove
+                </button>
+              </div>
+              <input id="set-photo-input" type="file" accept="image/*"
+                style="display:none" onchange="handlePhotoUpload(this)"/>
+
+              <!-- Name + Gender -->
+              <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
+                <input id="set-name" type="text" placeholder="Your name"
+                  class="settings-input" onblur="saveProfile()"/>
+                <select id="set-gender" class="settings-input" onchange="saveProfile()">
+                  <option value="">Prefer not to say</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ── Assistant Identity ─────────────────────────────────── -->
+          <div class="settings-section">
+            <div class="settings-section-title">
+              <i data-lucide="bot" width="14" height="14"></i> Assistant Identity
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Assistant name</span>
+              <input id="set-bot-name" type="text"
+                class="settings-input settings-input-sm"
+                placeholder="Charli"
+                onblur="saveBotName()"/>
+            </div>
+            <p class="settings-hint">
+              This is what your assistant calls itself. Changes take effect immediately.
+            </p>
+          </div>
+
+          <!-- ── Theme ───────────────────────────────────────────────── -->
+          <div class="settings-section">
+            <div class="settings-section-title">
+              <i data-lucide="palette" width="14" height="14"></i> Theme
+            </div>
+            <div class="theme-btns">
+              <button class="theme-btn" data-theme="dark"
+                onclick="setTheme('dark', this)">
+                <i data-lucide="moon" width="16" height="16"></i>
+                Dark
+              </button>
+              <button class="theme-btn" data-theme="light"
+                onclick="setTheme('light', this)">
+                <i data-lucide="sun" width="16" height="16"></i>
+                Light
+              </button>
+              <button class="theme-btn" data-theme="system"
+                onclick="setTheme('system', this)">
+                <i data-lucide="monitor" width="16" height="16"></i>
+                System
+              </button>
+            </div>
+          </div>
+
+          <!-- ── AI Model ────────────────────────────────────────────── -->
+          <div class="settings-section">
+            <div class="settings-section-title">
+              <i data-lucide="cpu" width="14" height="14"></i> AI Model
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Active model</span>
+              <select id="set-model" class="settings-input settings-input-sm"
+                onchange="saveModel()">
+              </select>
+            </div>
+            <p class="settings-hint">
+              Pull new models with <code>ollama pull modelname</code> in terminal.
+            </p>
+          </div>
+
+          <!-- ── Voice ───────────────────────────────────────────────── -->
+          <div class="settings-section">
+            <div class="settings-section-title">
+              <i data-lucide="mic" width="14" height="14"></i> Voice
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Speech speed</span>
+              <span id="set-voice-rate-label" class="settings-value">175 wpm</span>
+            </div>
+            <input id="set-voice-rate" type="range"
+              min="100" max="300" step="5" value="175"
+              class="settings-slider"
+              oninput="updateVoiceRate(this.value)"
+              onchange="saveVoiceRate()"/>
+            <div class="settings-slider-labels">
+              <span>Slow</span><span>Normal</span><span>Fast</span>
+            </div>
+          </div>
+
+          <!-- ── Wake word ───────────────────────────────────────────── -->
+          <div class="settings-section">
+            <div class="settings-section-title">
+              <i data-lucide="radio" width="14" height="14"></i> Wake Word
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Enable wake word</span>
+              <label class="settings-toggle">
+                <input id="set-wake-enabled" type="checkbox"
+                  onchange="saveWakeWord()"/>
+                <span class="toggle-track"></span>
+              </label>
+            </div>
+            <div class="settings-row" style="margin-top:8px;">
+              <span class="settings-label">Wake phrase</span>
+              <input id="set-wake-word" type="text"
+                class="settings-input settings-input-sm"
+                placeholder="hey charli"
+                onblur="saveWakeWord()"/>
+            </div>
+            <div class="settings-row" style="margin-top:8px;">
+              <span class="settings-label">Sensitivity</span>
+              <span id="set-wake-threshold-label"
+                class="settings-value">0.5</span>
+            </div>
+            <input id="set-wake-threshold" type="range"
+              min="0.1" max="0.9" step="0.05" value="0.5"
+              class="settings-slider"
+              oninput="document.getElementById('set-wake-threshold-label')
+                      .textContent = parseFloat(this.value).toFixed(2)"
+              onchange="saveWakeWord()"/>
+            <div class="settings-slider-labels">
+              <span>More sensitive</span>
+              <span>Less sensitive</span>
+            </div>
+            <p class="settings-hint">
+              Say <strong>"Hey Jarvis"</strong> to activate — 
+              the model responds to this phrase reliably.<br>
+              Lower sensitivity = triggers easier but more false positives.
+              Higher = needs clearer pronunciation.
+            </p>
+          </div>
+
+          <!-- ── Startup ─────────────────────────────────────────────── -->
+          <div class="settings-section">
+            <div class="settings-section-title">
+              <i data-lucide="power" width="14" height="14"></i> Startup
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Launch Charli when Windows starts</span>
+              <label class="settings-toggle">
+                <input id="set-startup" type="checkbox"
+                  onchange="toggleStartup(this)"/>
+                <span class="toggle-track"></span>
+              </label>
+            </div>
+            <p class="settings-hint">
+              Charli will start minimised to the system tray on boot.
+            </p>
+          </div>
+
+          <!-- ── About ───────────────────────────────────────────────── -->
+          <div class="settings-section">
+            <div class="settings-section-title">
+              <i data-lucide="info" width="14" height="14"></i> About
+            </div>
+            <div id="set-system-info">
+              <div class="empty-state">Loading system info...</div>
+            </div>
+          </div>
+
+          <!-- ── Memory ─────────────────────────────────────────────── -->
+          <div class="settings-section">
+            <div class="settings-section-title">
+              <i data-lucide="brain" width="14" height="14"></i> Memory
+            </div>
+
+            <div class="settings-row">
+              <span class="settings-label">What Charli remembers about you</span>
+              <button class="auto-btn" onclick="loadMemoryFacts()"
+                style="font-size:11px; padding:5px 10px;">
+                <i data-lucide="refresh-cw" width="12" height="12"></i> Refresh
+              </button>
+            </div>
+
+            <div id="memory-facts-list"
+              style="display:flex; flex-direction:column; gap:6px; margin-top:4px;">
+              <div class="empty-state" style="margin-top:8px;">
+                Loading memory...
+              </div>
+            </div>
+
+            <div class="settings-row" style="margin-top:8px; flex-wrap:wrap; gap:8px;">
+              <button class="auto-btn" onclick="clearAllMemory()"
+                style="color:var(--red); border-color:#3f1515; font-size:11px;">
+                <i data-lucide="trash-2" width="12" height="12"></i> Clear All Memory
+              </button>
+              <button class="auto-btn" onclick="clearChatHistory()"
+                style="font-size:11px;">
+                <i data-lucide="message-square-x" width="12" height="12"></i> Clear Chat History
+              </button>
+            </div>
+
+            <p class="settings-hint">
+              Charli automatically learns facts from your conversations.
+              You can delete individual facts or clear everything.
+            </p>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script src="scripts/api.js"></script>
+<script src="scripts/tasks.js"></script>
+<script src="scripts/notes.js"></script>
+<script src="scripts/files.js"></script>
+<script src="scripts/search.js"></script>
+<script src="scripts/calendar.js"></script>
+<script src="scripts/settings.js"></script>
+<script src="scripts/automation.js"></script>
+<script src="scripts/reminders.js"></script>
+<script src="scripts/code.js"></script>
+<script src="scripts/chat_history.js"></script>
+<script src="scripts/translator.js"></script>
+<script src="scripts/app.js"></script>
+
+<!-- FIX 5: createIcons runs after all scripts load.
+     For dynamically injected icons, call lucide.createIcons() again in your JS
+     after adding new DOM elements (e.g. after rendering chat messages or tasks). -->
+<script>lucide.createIcons();</script>
+</body>
+</html>
